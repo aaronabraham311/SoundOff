@@ -1,8 +1,6 @@
 import os
-import youtube_dl      
-
-ydl_opts = {}
-ydl = youtube_dl.YoutubeDL(ydl_opts)
+import shutil
+import re
 
 '''
 70s music: 148 songs
@@ -18,35 +16,44 @@ urls = {'1970s_music_videos': 'https://www.youtube.com/playlist?list=PLGBuKfnErZ
         '1990s_music_videos': 'https://www.youtube.com/playlist?list=PLZyqOyXxaVETqpHhT_c5GPmAPzhJpJ5K7',
         '2000s_music_videos': 'https://www.youtube.com/playlist?list=PLwW9XzYk5_cQyw-MDuD-bF-OCjJQ6UjZf',
         '2010s-music_videos': 'https://www.youtube.com/playlist?list=PLeZgwVkN7bbfVLcqnz9l5RjASqUkBtpBe'}
-
-os.chdir('music/english/')
+soundbite_directories = ['1970s_audio', '1980s_audio', '1990s_audio', '2000s_audio', '2010s_audio']
 
 
 # Downloading all songs in each playlist 
 
-# Downloading video and audio streams: https://unix.stackexchange.com/questions/230481/how-to-download-portion-of-video-with-youtube-dl-command
-# Getting video links from playlist: https://stackoverflow.com/questions/43910501/how-do-i-retrieve-individual-video-urls-from-a-playlist-using-youtube-dl-within
+# I have decided that downloading the videos and then cutting it up is much more time efficient than using the above links.
+os.chdir('music/english/')
 
 for directory, link in urls.items():
+    print(os.curdir)
+    os.system(f"mkdir {directory}")
+    os.chdir(f"{directory}")
+    command = f"youtube-dl --extract-audio --audio-format mp3 -i {link}"
+    os.system(command)
+    os.chdir("../")
 
-    with ydl:
-        result = ydl.extract_info(link, download = False)
+# Creating directories for audio bites
+for directory_name in soundbite_directories:
+    os.system(f"mkdir {directory_name}")
 
-        if 'entries' in result:
-            playlist = result['entries']
+# Renaming files to remove all non-alphanumeric characters
 
-            for i, item in enumerate(playlist):
-                video_url = result['entries'][i]['webpage_url']
-
-                print(os.curdir)
-                os.chdir(f"{directory}")
-                command = f"ffmpeg -ss 00:00:30.00 -i "OUTPUT-OF-FIRST URL" -t 00:00:30.00 -c copy out.mp4"
-                os.system(command)
-                os.chdir("../")
-
-
-
-# Looping through all songs and extracting 00:00:30 to 00:01:00 and putting into new directories
 for directory in urls.keys():
-    for filename in os.listdir(directory):
-        
+    os.chdir(f"{directory}")
+    for filename in os.listdir():
+        os.rename(filename, re.sub('[\W_]+','',filename))
+    os.chdir("../")
+
+# Getting 2 30-sec soundbites from 00:00:30 - 00:01:00 and 00:01:30 - 00:02:00
+for i, directory in enumerate(urls.keys()):
+    os.chdir(f"{directory}")
+    for filename in os.listdir():
+        command1 = f"ffmpeg -ss 00:00:30.00 -i {filename} -t 00:00:30.00 -c copy ../{soundbite_directories[i]}/{filename}_1.mp3"
+        command2 = f"ffmpeg -ss 00:01:30.00 -i {filename} -t 00:00:30.00 -c copy ../{soundbite_directories[i]}/{filename}_2.mp3"
+        os.system(command1)
+        os.system(command2)
+    os.chdir("../")
+
+# Removing all full audio directories
+for directory in urls.keys():
+    shutil.rmtree(directory) 
